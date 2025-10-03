@@ -1,82 +1,84 @@
-# 📌 Управление запуском скриптов в docker containers
-## 🎯 Описание
-Этот проект предоставляет приложение с REST API, позволяющее выполнять пользовательские скрипты в любых работающих docker контейнерах **без их перезапуска**. 
+# 📌 Managing Script Execution in Docker Containers
 
-Скрипты будут запускаться **внутри контейнера** как **вторичный процесс**. 
+## 🎯 Description
 
-Для хранения скриптов используется **директория в клиенте** ( **[TODO]**:in future store in S3).
+This project provides an application with a REST API that allows you to execute custom scripts in any running Docker container **without restarting them**.
 
-Проект призван стать начальным **прототипом** для разработки [k8s-helper-rest-api]() и находится в активной разработке.
+The scripts will be executed **inside the container** as a **secondary process**.
 
-### Основные компоненты:
+Scripts are stored in the **client directory** (**[TODO]**: in the future, store them in S3).
 
-1. FastAPI:
+The project is intended to serve as an initial **prototype** for the development of [k8s-helper-rest-api](https://github.com/ukarpenko/k8s-helper-rest-api) and is currently under active development.
 
-   - Обработчик API для получения запросов на запуск скриптов. API будет принимать команду на выполнение скрипта внутри контейнера.
+### Key Components:
 
-   - Каждому запросу будет сопоставляться контейнер, в котором этот скрипт должен быть выполнен.
+1. **FastAPI**:
 
-2. Сервис взаимодействия с Docker:
+   * API handler for receiving requests to run scripts. The API will accept a command to execute a script inside a container.
+   * Each request will be mapped to the container where the script should be executed.
 
-   - Для выполнения скриптов в контейнерах будет использоваться команда docker exec.
+2. **Docker Interaction Service**:
 
-   - Пример кода будет использовать библиотеку docker-py, которая позволяет выполнять команды внутри контейнера, как если бы вы использовали команду docker exec вручную.
+   * The `docker exec` command will be used to execute scripts in containers.
+   * The example code will use the `docker-py` library, which allows you to execute commands inside a container as if you were using `docker exec` manually.
 
-3. docker-compose:
+3. **docker-compose**:
 
-   - Контейнеры работают под управлением docker-compose, команды будут отрабатывать в этих контейнерах.
+   * Containers will be managed by `docker-compose`, and the commands will be executed within these containers.
 
-### Как это будет работать:
+### How It Will Work:
 
-* **API получает запрос** на выполнение скрипта.
-* **API выбирает контейнер**, в котором будет выполнен скрипт (например, через ID контейнера, который передаётся в запросе).
-* **API выполняет команду `docker exec`** для запуска скрипта внутри контейнера, используя библиотеку `docker-py`.
-* **API возвращает результат выполнения** скрипта клиенту (в том числе логи или ошибку выполнения).
+* **The API receives a request** to execute a script.
+* **The API selects the container** in which the script will be executed (e.g., through the container ID passed in the request).
+* **The API executes the `docker exec` command** to run the script inside the container using the `docker-py` library.
+* **The API returns the result** of the script execution to the client (including logs or execution errors).
 
 ## Future Architecture:
-### Архитектурный подход:
 
-1. **Использование кластера контейнеров**:
+### Architectural Approach:
 
-   * У тебя есть несколько контейнеров (например 3 штуки), развёрнутых с помощью `docker-compose`.
-   * Контейнеры будут работать с основными процессами, а скрипты будут запускаться в этих контейнерах параллельно через `docker exec`.
+1. **Using a Container Cluster**:
 
-2. **API для запуска скриптов**:
+   * You have several containers (e.g., 3) deployed using `docker-compose`.
+   * Containers will run the main processes, while scripts will be executed in these containers concurrently via `docker exec`.
 
-   * FastAPI будет принимать запросы от клиента, а затем будет отправлять команды в контейнеры через `docker exec`, чтобы запустить скрипты.
-   * В запросе можно будет указывать, в каком контейнере должен быть выполнен скрипт.
+2. **API for Script Execution**:
 
-3. **Логика запуска скриптов**:
+   * FastAPI will receive requests from the client and then send commands to the containers through `docker exec` to run the scripts.
+   * The request will specify in which container the script should be executed.
 
-   * Когда приходит запрос на выполнение скрипта, сервер выбирает один из контейнеров и выполняет скрипт через команду `docker exec`.
-   * Результат выполнения скрипта должен быть возвращён клиенту через API.
+3. **Script Execution Logic**:
 
-4. **Доступ к контейнерам**:
+   * When a request to execute a script arrives, the server selects one of the containers and runs the script via the `docker exec` command.
+   * The execution result will be returned to the client via the API.
 
-   * В разработке
+4. **Access to Containers**:
+
+   * Under development
+
 
 ## Future Structure:
 
 ```plaintext
 docker-helper-rest-api/
 │
-├── app/                            # Основной проект FastAPI
-│   ├── main.py                     # Основной файл с FastAPI сервером
-│   ├── models/                     # Модели данных для запросов и ответов
-│   │   └── script.py               # Модель для скрипта (например, имя, содержимое и пр.)
-│   ├── services/                   # Логика взаимодействия с контейнерами и Docker
-│   │   └── docker_service.py       # Логика взаимодействия с контейнерами (docker exec)
-│   ├── config/                     # Конфигурации сервера и Docker
-│   │   └── settings.py             # Настройки для Docker и приложения
-│   └── utils/                      # Утилитарные функции (например, валидаторы)
-│       └── docker_utils.py         # Вспомогательные функции для работы с Docker
+├── app/                            # Main FastAPI project
+│   ├── main.py                     # Main file with FastAPI server
+│   ├── models/                     # Data models for reqs & resps
+│   │   └── script.py               # Model for a script (e.g., name, content, etc.)
+│   ├── services/                   # Logic for interacting with containers and Docker
+│   │   └── docker_service.py       # Logic for interacting with containers (docker exec)
+│   ├── config/                     # Server and Docker configurations
+│   │   └── settings.py             # Settings for Docker and the application
+│   └── utils/                      # Utility functions (e.g., validators)
+│       └── docker_utils.py         # Helper functions for working with Docker
 │
-├── docker/                         # Docker файлы
-│   ├── docker-compose.yml          # Конфигурация Docker Compose для кластера из 3-х контейнеров
-│   └── Dockerfile                  # Dockerfile для базового контейнера
+├── docker/                         # Docker files
+│   ├── docker-compose.yml          # Docker Compose for cluster
+│   └── Dockerfile                  # Dockerfile for the base container
 │
-├── requirements.txt                # Зависимости Python
-└── README.md                       # Документация проекта
+├── requirements.txt                # Python deps
+└── README.md                       # Project documentation
 ```
 ## Test Infrastructure:
 
@@ -92,4 +94,4 @@ docker-helper-rest-api/
 
 ## Dev Toolset:
 - **PL**: `Python`
-- **Фреймворки**: `FastAPI` , `docker-py`
+- **Frameworks && libs**: `FastAPI` , `docker-py`
