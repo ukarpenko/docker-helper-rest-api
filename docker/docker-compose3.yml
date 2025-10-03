@@ -1,0 +1,81 @@
+version: '3.8'
+services:
+  postgres1:
+    image: psql-custom:2.0
+    container_name: postgres1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db1
+    command: tail -f /dev/null  # Оставляем контейнер работающим в фоновом режиме
+    volumes:
+      - postgres1-data:/var/lib/postgresql/data
+    networks:
+      - postgres_network
+    ports:
+      - "5431:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'   # Лимит до 25% от 1 CPU core
+          memory: 256M  # Лимит до 256MB от RAM
+        reservations:
+          cpus: '0.2'  # Гарантировано 20% от 1 CPU core
+          memory: 128M # Гарантировано 128MB от RAM
+    logging:
+      driver: "syslog"
+
+  postgres2:
+    image: psql-custom:2.0
+    container_name: postgres2
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db2
+    command: tail -f /dev/null
+    volumes:
+      - postgres2-data:/var/lib/postgresql/data
+    networks:
+      - postgres_network
+    ports:
+      - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+
+  postgres3:
+    image: psql-custom:2.0
+    container_name: postgres3
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db3
+    command: tail -f /dev/null
+    volumes:
+      - postgres3-data:/var/lib/postgresql/data
+    networks:
+      - postgres_network
+    ports:
+      - "5433:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+
+networks:
+  postgres_network:
+    driver: bridge
+
+volumes:
+  postgres1-data:
+  postgres2-data:
+  postgres3-data:
