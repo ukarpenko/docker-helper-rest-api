@@ -1,12 +1,13 @@
 version: '3.8'
 services:
   postgres1:
-    image: psql-custom:2.0
+    image: psql-custom:4.0
     container_name: postgres1
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: db1
+    user: "1001:1001"
     command: tail -f /dev/null  # Оставляем контейнер работающим в фоновом режиме
     volumes:
       - postgres1-data:/var/lib/postgresql/data
@@ -20,7 +21,7 @@ services:
           cpus: '0.25'   # Лимит до 25% от 1 CPU core
           memory: 256M  # Лимит до 256MB от RAM
         reservations:
-          cpus: '0.2'  # Гарантировано 20% от 1 CPU core
+          cpus: '0.20'  # Гарантировано 20% от 1 CPU core
           memory: 128M # Гарантировано 128MB от RAM
     logging:
       driver: "journald"
@@ -31,4 +32,3 @@ networks:
 
 volumes:
   postgres1-data:
-

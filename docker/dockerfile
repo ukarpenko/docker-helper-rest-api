@@ -1,5 +1,12 @@
-FROM postgres:15
+#psql-custom:4.0
+FROM python:3.12-slim AS python-base
+
 RUN apt-get update && apt-get install -y \
+    libpq-dev \
     curl \
-    python3 \
-    && apt-get clean
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM postgres:15
+
+COPY --from=python-base /usr/local /usr/local
