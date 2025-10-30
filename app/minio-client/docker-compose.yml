@@ -1,0 +1,23 @@
+version: "3.4"
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - /opt/minio_client_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  fastapi:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - minio
+
+volumes:
+  minio_data:
