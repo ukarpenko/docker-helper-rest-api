@@ -7,10 +7,6 @@ RUN apt-get update && apt-get install -y awscli curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем MinIO клиент (mc)
-RUN curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc > /usr/local/bin/mc
-RUN chmod +x /usr/local/bin/mc
-
 # Устанавливаем зависимости для FastAPI
 WORKDIR /app
 COPY requirements.txt /app/
