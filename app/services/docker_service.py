@@ -3,6 +3,8 @@ import docker
 import requests
 from pydantic import BaseModel
 import subprocess
+import os
+from typing import List
 
 # Создаем объект FastAPI
 docker_app = FastAPI()
@@ -15,11 +17,14 @@ client = docker.from_env()
 
 MINIO_SERVICE_URL = "http://127.0.0.1:8000"  # URL minio-client
 
-class ScriptExecutionRequest(BaseModel):
+class MinioScriptExecutionRequest(BaseModel):
     minio_container_name: str
     target_container_name: str
     script_name: str
 
+class LocalScriptExecutionRequest(BaseModel):
+    container_names:  List[str]
+    script_path: str
 
 # Функция для скачивания скрипта из MinIO-сервиса
 def download_script_from_minio(script_name: str):
@@ -74,7 +79,7 @@ def get_cont_ids_up():
 
 # Ручка для выполнения скрипта в контейнере
 @docker_router.post("/containers/s3/exec_script/")
-async def download_and_exec_script(request: ScriptExecutionRequest):
+async def download_and_exec_script(request: MinioScriptExecutionRequest):
     minio_container_name = request.minio_container_name
     target_container_name = request.target_container_name
     script_name = request.script_name
@@ -127,35 +132,52 @@ docker_app.include_router(docker_router)
 
 
 # Ручка для копирования скрипта в контейнер и его выполнения
-@docker_app.post("/containers/{container_name}/exec_script/")
-def exec_script_in_container(container_name: str, script_path: str):
-    container = client.containers.get(container_name)
+@docker_app.post("/containers/exec_script/")
+def exec_script_in_container(request: LocalScriptExecutionRequest):
+    container_names = request.container_names
+    script_path = request.script_path
+    results = []
 
-    # Проверяем, что контейнер в статусе 'running'
-    if container.status != 'running':
-        raise HTTPException(status_code=400, detail="Container is not running.")
-
-    # Проверяем, существует ли указанный скрипт на хосте
+    # Проверка существования скрипта на хосте
     if not os.path.exists(script_path):
         raise HTTPException(status_code=404, detail=f"Script at {script_path} does not exist on host.")
 
-    # Копируем скрипт в контейнер
-    try:
-        script_name = os.path.basename(script_path)
-        copy_command = ["docker", "cp", script_path, f"{container_name}:/tmp/{script_name}"]
-        subprocess.run(copy_command, check=True)
+    # Для каждого контейнера из списка
+    for container_name in container_names:
+        try:
+            container = client.containers.get(container_name)
 
-        # Даем права на выполнение скрипта
-        container.exec_run('chmod +x /tmp/' + os.path.basename(script_path))
+            # Проверяем, что контейнер в статусе 'running'
+            if container.status != 'running':
+                results.append({
+                    "container": container_name,
+                    "status": "failed",
+                    "detail": "Container is not running."
+                })
+                continue  # Переходим к следующему контейнеру
 
-        # Запускаем скрипт в контейнере
-        exec_result = container.exec_run(f'/tmp/{os.path.basename(script_path)}', tty=True)
-        
-        return {"status": "success", "output": exec_result.output.decode("utf-8")}
+            # Копируем скрипт в контейнер
+            script_name = os.path.basename(script_path)
+            copy_command = ["docker", "cp", script_path, f"{container_name}:/tmp/{script_name}"]
+            subprocess.run(copy_command, check=True)
+
+            # Даем права на выполнение скрипта
+            container.exec_run(f'chmod +x /tmp/{script_name}')
+
+            # Запускаем скрипт в контейнере
+            exec_result = container.exec_run(f'/tmp/{script_name}', tty=True)
+
+            results.append({
+                "container": container_name,
+                "status": "success",
+                "output": exec_result.output.decode("utf-8")
+            })
+
+        except Exception as e:
+            results.append({
+                "container": container_name,
+                "status": "failed",
+                "detail": str(e)
+            })
     
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error while executing the script: {str(e)}")
-
-
-
-
+    return {"results": results}
