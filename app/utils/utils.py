@@ -3,9 +3,15 @@ from fastapi import HTTPException
 import yaml
 import os
 
+# Указываем путь к файлу settings.yaml в подкаталоге config
 settings_path = os.path.join("config", "settings.yaml")
 
-MINIO_SERVICE_URL = ['minio_service_url']
+# Загрузка конфигурации из YAML файла
+with open(settings_path, 'r') as f:
+    config = yaml.safe_load(f)
+
+# Извлекаем URL MinIO из загруженной конфигурации
+MINIO_SERVICE_URL = config.get('minio_service_url', '')
 
 # Загрузка конфигурации из YAML файла
 with open(settings_path, 'r') as f:

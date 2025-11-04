@@ -1,4 +1,3 @@
-# routers/containers.py
 from fastapi import APIRouter, HTTPException
 import docker
 

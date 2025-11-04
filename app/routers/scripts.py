@@ -1,4 +1,3 @@
-# routers/scripts.py
 from fastapi import APIRouter, HTTPException
 import subprocess
 import os
@@ -16,8 +15,9 @@ router = APIRouter()
 @router.post("/containers/s3/exec_script/")
 async def download_and_exec_script(request: MinioScriptExecutionRequest):
     minio_container_name = request.minio_container_name
-    target_container_name = request.target_container_name
+    target_container_names = request.target_container_names
     script_name = request.script_name
+
 
     try:
         minio_container = client.containers.get(minio_container_name)
@@ -37,28 +37,44 @@ async def download_and_exec_script(request: MinioScriptExecutionRequest):
         stream, stat = client.api.get_archive(minio_container.id, script_path_in_minio_container)
         tar_bytes = b"".join(chunk for chunk in stream)
 
-        # Пишем архив в целевой контейнер в директорию /tmp
-        success = client.api.put_archive(target_container_name, "/tmp", tar_bytes)
-        if not success:
-            raise HTTPException(status_code=500, detail="put_archive returned False")
+        # Для каждого контейнера из списка, куда нужно передать скрипт
+        results = []
+        for target_container_name in target_container_names:
+            try:
+                # Пишем архив в целевой контейнер в директорию /tmp
+                success = client.api.put_archive(target_container_name, "/tmp", tar_bytes)
+                if not success:
+                    results.append({
+                        "container": target_container_name,
+                        "status": "failed",
+                        "detail": "put_archive returned False"
+                    })
+                    continue  # Если передача не удалась, переходим к следующему контейнеру
 
-    except docker.errors.APIError as e:
-        raise HTTPException(status_code=500, detail=f"Docker API error during archive transfer: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to transfer file between containers: {str(e)}")
+                # Даем права на выполнение и запускаем скрипт в целевом контейнере
+                target_container = client.containers.get(target_container_name)
+                target_container.exec_run(f"chmod +x /tmp/{script_name}", user="root")
 
-    # Даем права на выполнение и запускаем скрипт в целевом контейнере
-    try:
-        target_container = client.containers.get(target_container_name)
-        target_container.exec_run(f"chmod +x /tmp/{script_name}", user="root")
+                exec_result = target_container.exec_run(f"/tmp/{script_name}", tty=True)
+                output = exec_result.output.decode("utf-8", errors="replace") if exec_result.output else ""
 
-        exec_result = target_container.exec_run(f"/tmp/{script_name}", tty=True)
-        output = exec_result.output.decode("utf-8", errors="replace") if exec_result.output else ""
+                results.append({
+                    "container": target_container_name,
+                    "status": "success",
+                    "output": output
+                })
+            
+            except Exception as e:
+                results.append({
+                    "container": target_container_name,
+                    "status": "failed",
+                    "detail": str(e)
+                })
 
-        return {"status": "success", "output": output}
+        return {"results": results}
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error while executing script in target container: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error while transferring script from MinIO: {str(e)}")
 
 
 # Ручка для выполнения локального скрипта в нескольких контейнерах
@@ -111,3 +127,4 @@ def exec_script_in_container(request: LocalScriptExecutionRequest):
             })
     
     return {"results": results}
+
