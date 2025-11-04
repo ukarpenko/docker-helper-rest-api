@@ -1,0 +1,8 @@
+# Конфигурация MinIO
+MINIO_ENDPOINT: ""  # Адрес MinIO
+MINIO_ACCESS_KEY: ""  # Ваш ключ доступа
+MINIO_SECRET_KEY: ""  # Ваш секретный ключ
+S3_BUCKET: ""  # Имя вашего MinIO бакета
+
+# Создадим alias для MinIO
+MINIO_ALIAS: ""

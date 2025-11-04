@@ -1,0 +1,4 @@
+fastapi[all]
+docker
+pyyaml
+uvicorn
